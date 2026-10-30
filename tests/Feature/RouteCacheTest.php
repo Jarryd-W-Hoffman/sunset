@@ -58,4 +58,26 @@ PHP);
             ->assertOk()
             ->assertExactJson(['parameters' => ['id' => '5'], 'id' => '5']);
     }
+
+    #[Test]
+    public function cached_routes_still_send_the_headers()
+    {
+        $this->defineCacheRoutes(<<<'PHP'
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Jarryd\Sunset\Tests\Stubs\ClassSunsetController;
+
+Route::get('/reports', fn () => 'OK')->name('reports.index');
+Route::get('/cached', fn () => 'OK')->sunset('2027-06-30', since: '2026-11-01', replacement: 'reports.index');
+Route::get('/cached-attribute', [ClassSunsetController::class, 'index'])->middleware('web');
+PHP);
+
+        $this->get('/cached')
+            ->assertHeader('Sunset', 'Wed, 30 Jun 2027 00:00:00 GMT')
+            ->assertHeader('Deprecation', '@1793491200')
+            ->assertHeader('Link', '<http://localhost/reports>; rel="successor-version"');
+
+        $this->get('/cached-attribute')->assertHeader('Sunset', 'Wed, 30 Jun 2027 00:00:00 GMT');
+    }
 }

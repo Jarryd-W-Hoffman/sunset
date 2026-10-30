@@ -14,7 +14,7 @@
 </p>
 
 > [!NOTE]
-> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, with validation, and `route:cache` support. Headers, enforcement, caller reports and the commands are next. Screenshots will be added as the commands land.
+> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, and the deprecation headers. Enforcement, caller reports, page notices and the commands are next. Screenshots will be added as the commands land.
 
 <p align="center">
     <a href="#why-sunset">Why Sunset?</a> ·
@@ -104,6 +104,11 @@ flowchart TD
   Sunset: Wed, 30 Jun 2027 00:00:00 GMT
   Link: <https://acme.test/api/v2/orders>; rel="successor-version"
   ```
+
+  - **`Sunset`** is the sunset date as an HTTP date in GMT.
+  - **`Deprecation`** is only sent when you give `since`.
+  - **`Link`** points to the replacement. A replacement route that needs parameters reuses the current route's, so `/articles/{post}` can point to `blog.show` and land on the same post. If the replacement can't be resolved (an unknown name, or a parameter that isn't available), the `Link` header is left out instead of breaking the response.
+  - **Headers your app sets itself are kept:** Sunset never overwrites a `Sunset` or `Deprecation` header, and adds its `Link` alongside any others.
 
 - **Page notices** for people in a browser: drop `<x-sunset::notice />` into your layout and it shows on sunset pages only ("This page is being retired on 1 March 2027. Use Reports instead."). For Inertia or Livewire, read the same data from `Sunset::current()`.
 - **An event**, `DeprecatedRouteCalled`, at most once per caller per day, for Slack alerts or anything else.
