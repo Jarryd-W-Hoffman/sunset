@@ -39,6 +39,15 @@ final class Sunset
     }
 
     /**
+     * The notice for the current page, or null if its route has no sunset.
+     * Share it with Inertia, or read it in a Livewire component's mount().
+     */
+    public static function current(): ?SunsetNotice
+    {
+        return SunsetNotice::forRequest(request());
+    }
+
+    /**
      * Identify callers your own way in sunset:report, for example by tenant.
      * Return null to fall back to "anonymous".
      *

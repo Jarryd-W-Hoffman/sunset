@@ -6,6 +6,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Jarryd\Sunset\Commands\CheckCommand;
 use Jarryd\Sunset\Commands\ListCommand;
@@ -48,6 +49,7 @@ class SunsetServiceProvider extends ServiceProvider
         }
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sunset');
+        Blade::componentNamespace('Jarryd\\Sunset\\View\\Components', 'sunset');
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->registerMiddleware();
