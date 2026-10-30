@@ -2,8 +2,12 @@
 
 namespace Jarryd\Sunset;
 
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Routing\Route;
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use Jarryd\Sunset\Http\Middleware\HandleSunsetRoutes;
 
 class SunsetServiceProvider extends ServiceProvider
 {
@@ -26,6 +30,8 @@ class SunsetServiceProvider extends ServiceProvider
             ], 'sunset-config');
         }
 
+        $this->registerMiddleware();
+
         // Sunsets live in the route action rather than the route defaults, as
         // defaults are merged into the route parameters at dispatch time.
         // The sunset is validated here, so a bad date fails when routes load.
@@ -39,7 +45,35 @@ class SunsetServiceProvider extends ServiceProvider
             /** @var Route $this */
             $this->action['sunset'] = (new Sunset($date, $replacement, $since, $reason, $mode))->toArray();
 
-            return $this;
+            // The router removes the duplicate if the route's group adds it too.
+            return $this->middleware(HandleSunsetRoutes::class);
+        });
+    }
+
+    /**
+     * Give the middleware a "sunset" alias, and add it to the configured groups.
+     */
+    protected function registerMiddleware(): void
+    {
+        $this->callAfterResolving(Router::class, function (Router $router) {
+            $router->aliasMiddleware('sunset', HandleSunsetRoutes::class);
+        });
+
+        // Register via the HTTP kernel rather than the router: the kernel re-syncs
+        // its groups onto the router whenever they change, which would wipe a
+        // router-only registration.
+        $this->callAfterResolving(HttpKernel::class, function ($kernel) {
+            if (! $kernel instanceof Kernel) {
+                return;
+            }
+
+            $defined = $kernel->getMiddlewareGroups();
+
+            foreach ((array) config('sunset.middleware_groups', ['web', 'api']) as $group) {
+                if (isset($defined[$group])) {
+                    $kernel->appendMiddlewareToGroup($group, HandleSunsetRoutes::class);
+                }
+            }
         });
     }
 }

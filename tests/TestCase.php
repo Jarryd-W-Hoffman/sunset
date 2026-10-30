@@ -20,6 +20,9 @@ abstract class TestCase extends Orchestra
         // Laravel 12 serves the local disk through routes, which would otherwise
         // appear alongside the routes under test.
         $app['config']->set('filesystems.disks.local.serve', false);
+
+        // The web group encrypts cookies, which needs a key.
+        $app['config']->set('app.key', 'base64:SX8xwpOBOv8BORUEBzL+PypoyKj6xcjOUKJvvpkvvI0=');
     }
 
     protected function getPackageProviders($app): array
