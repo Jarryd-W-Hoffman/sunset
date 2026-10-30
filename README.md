@@ -14,7 +14,7 @@
 </p>
 
 > [!NOTE]
-> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, the deprecation headers, retiring routes after the date (`warn` and `enforce`), recording callers, the `sunset:list`, `sunset:report` and `sunset:check` commands, and page notices. The Route Notes and Ghost Buster integrations are next. Screenshots will be added as the commands land.
+> **🚧 Not yet tagged.** Everything in this README is built and tested. Screenshots and a first release are next.
 
 <p align="center">
     <a href="#why-sunset">Why Sunset?</a> ·
@@ -197,6 +197,7 @@ php artisan vendor:publish --tag="sunset-config"
 | `php artisan sunset:report` | Who's still calling each sunset route, busiest first, with hits and when they last called |
 | `php artisan sunset:report reports.legacy` | The callers of one route |
 | `php artisan sunset:report --since=7` | Only callers seen in the last 7 days |
+| `php artisan sunset:list --candidates` | Routes marked deprecated with [Route Notes](#works-with-route-notes-and-ghost-buster) that don't have a sunset date yet |
 | `php artisan sunset:check` | For CI: fails on a replacement that isn't a route name, URL or path, or on a route that's **Safe to delete**: retired for at least `quiet_days`, with no calls in that time |
 | `--json` | On `sunset:list` and `sunset:report`, for scripts and dashboards |
 
@@ -245,10 +246,10 @@ flowchart LR
 
 | If installed | Sunset adds |
 | --- | --- |
-| [Route Notes](https://github.com/Jarryd-W-Hoffman/route-notes) | `->sunset()` also adds a `deprecated` note, so `route:list` shows "Sunset on 1 Mar 2027, use reports.index" beneath the route. `sunset:list --candidates` lists routes with a `deprecated` note but no sunset date yet. |
-| [Ghost Buster](https://github.com/Jarryd-W-Hoffman/ghost-buster) | `sunset:list` shows Ghost Buster's last-used time and hit count beside each route. These cover the route's life *before* it was given a sunset date. |
+| [Route Notes](https://github.com/Jarryd-W-Hoffman/route-notes) | `->sunset()` also adds a `deprecated` note, so `route:list` shows "Sunset on 1 Mar 2027, use reports.index" beneath the route. Calling `->sunset()` again replaces it. `sunset:list --candidates` lists routes with a `deprecated` note (fluent, `#[Note]` or `@note [deprecated]`) but no sunset date yet: the routes you've meant to retire but haven't scheduled. |
+| [Ghost Buster](https://github.com/Jarryd-W-Hoffman/ghost-buster) | `sunset:list` adds **Last used** and **Hits** columns, and `--json` a `ghost_buster` key, from Ghost Buster's `route_usage` table as of its last sync. These cover the route's life *before* it was given a sunset date. |
 
-These are one-way and read-only: Sunset reads from the other packages when it finds them, and never the other way round. Neither of them needs to know Sunset exists.
+The links only go one way. Sunset writes its note in Route Notes' stored format and reads Ghost Buster's table. Neither package calls Sunset or needs to know it exists. The note is only added by `->sunset()`. With `#[Sunset]` on a controller, add a `#[Note]` beside it yourself.
 
 ## Development
 
@@ -265,7 +266,7 @@ composer test         # run the test suite
 | `composer analyse` | Static analysis of `src` (PHPStan level 8, with Larastan) |
 | `composer analyse:tests` | Static analysis of the tests |
 
-CI runs the lint and static analysis, then the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, plus MySQL 8.4 and Postgres 17, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. Once the integrations exist, one more job will install both and run their tests.
+CI runs the lint and static analysis, then the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, plus MySQL 8.4 and Postgres 17, and once more with Route Notes and Ghost Buster installed, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. Once the integrations exist, one more job will install both and run their tests.
 
 ### Contributing
 
