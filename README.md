@@ -110,7 +110,14 @@ flowchart TD
 
 ### 🚪 Retiring (after the date)
 
-- **`warn` mode (default):** keep serving the route, with the headers, and log each call. Switch modes once the report is quiet.
+- **`warn` mode (default):** keep serving the route, with the headers, and log each call. Nothing ever breaks on its own.
+- **Switch to `enforce` when you're ready**, for every route at once in `config/sunset.php` or with the `SUNSET_MODE` env variable:
+
+  ```php
+  'mode' => env('SUNSET_MODE', 'warn'), // or 'enforce'
+  ```
+
+  Or for a single route, with `->sunset('2027-03-01', mode: 'enforce')`. A route's own mode wins over the config.
 - **`enforce` mode:**
   - `GET` and `HEAD` page requests with a replacement get a **`301` redirect** to it, so old bookmarks and search results keep working.
   - Everything else gets **`410 Gone`**, with the reason and a link to the replacement, as JSON for API requests or a simple page for browsers.
