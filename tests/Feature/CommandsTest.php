@@ -4,7 +4,7 @@ namespace Jarryd\Sunset\Tests\Feature;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Routing\RouteCollection;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Jarryd\Sunset\Tests\TestCase;
@@ -22,17 +22,6 @@ class CommandsTest extends TestCase
         Route::get('/promo', fn () => 'OK')->name('promo')->sunset('2026-08-01', since: '2026-06-01');
         Route::get('/orders', fn () => 'OK')->sunset('2027-01-15', replacement: '/v2/orders');
         Route::post('/orders', fn () => 'OK')->sunset('2027-01-15');
-    }
-
-    /**
-     * @param  array<string, mixed>  $parameters
-     * @return array<int, array<string, mixed>>
-     */
-    private function commandJson(string $command, array $parameters = []): array
-    {
-        Artisan::call($command, $parameters + ['--json' => true]);
-
-        return json_decode(Artisan::output(), true);
     }
 
     private function recordCall(string $route, string $method, string $caller, int $hits, string $last, string $first = '2026-09-01 10:00:00', ?string $ip = null): void
@@ -71,7 +60,11 @@ class CommandsTest extends TestCase
                 'stage' => 'deprecated', 'mode' => 'enforce', 'replacement' => 'reports.index', 'reason' => 'Use the new reports',
                 'callers' => 2, 'last_called_at' => '2026-10-29T10:00:00+00:00',
             ],
-        ], $this->commandJson('sunset:list'));
+        ], array_map(
+            // The integrations job adds Ghost Buster's usage, covered in GhostBusterTest.
+            fn (array $route) => Arr::except($route, 'ghost_buster'),
+            $this->artisanJson('sunset:list'),
+        ));
     }
 
     #[Test]
@@ -79,7 +72,7 @@ class CommandsTest extends TestCase
     {
         $this->recordCall('orders', 'POST', 'agent:curl', 5, '2026-10-29 10:00:00');
 
-        $orders = collect($this->commandJson('sunset:list'))->where('route', 'orders')->pluck('callers', 'methods.0')->all();
+        $orders = collect($this->artisanJson('sunset:list'))->where('route', 'orders')->pluck('callers', 'methods.0')->all();
 
         $this->assertSame(['GET' => 0, 'POST' => 1], $orders);
     }
@@ -124,7 +117,7 @@ class CommandsTest extends TestCase
                 'route' => 'reports.legacy', 'method' => 'GET', 'caller' => 'agent:curl', 'ip' => null, 'hits' => 3,
                 'first_called_at' => '2026-09-01T10:00:00+00:00', 'last_called_at' => '2026-10-20T10:00:00+00:00',
             ],
-        ], $this->commandJson('sunset:report'));
+        ], $this->artisanJson('sunset:report'));
     }
 
     #[Test]
@@ -134,8 +127,8 @@ class CommandsTest extends TestCase
         $this->recordCall('reports.legacy', 'GET', 'token:mobile-app', 40, '2026-10-29 10:00:00');
         $this->recordCall('orders', 'POST', 'user:9', 12, '2026-10-29 10:00:00');
 
-        $this->assertSame(['token:mobile-app', 'agent:curl'], array_column($this->commandJson('sunset:report', ['route' => 'reports.legacy']), 'caller'));
-        $this->assertSame(['token:mobile-app', 'user:9'], array_column($this->commandJson('sunset:report', ['--since' => 7]), 'caller'));
+        $this->assertSame(['token:mobile-app', 'agent:curl'], array_column($this->artisanJson('sunset:report', ['route' => 'reports.legacy']), 'caller'));
+        $this->assertSame(['token:mobile-app', 'user:9'], array_column($this->artisanJson('sunset:report', ['--since' => 7]), 'caller'));
     }
 
     #[Test]

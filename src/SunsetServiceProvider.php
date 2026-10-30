@@ -12,6 +12,7 @@ use Jarryd\Sunset\Commands\CheckCommand;
 use Jarryd\Sunset\Commands\ListCommand;
 use Jarryd\Sunset\Commands\ReportCommand;
 use Jarryd\Sunset\Http\Middleware\HandleSunsetRoutes;
+use Jarryd\Sunset\Integrations\RouteNotes;
 
 class SunsetServiceProvider extends ServiceProvider
 {
@@ -65,7 +66,12 @@ class SunsetServiceProvider extends ServiceProvider
             Mode|string|null $mode = null,
         ) {
             /** @var Route $this */
-            $this->action['sunset'] = (new Sunset($date, $replacement, $since, $reason, $mode))->toArray();
+            $sunset = new Sunset($date, $replacement, $since, $reason, $mode);
+            $this->action['sunset'] = $sunset->toArray();
+
+            if (RouteNotes::installed()) {
+                RouteNotes::addNote($this, $sunset);
+            }
 
             // The router removes the duplicate if the route's group adds it too.
             return $this->middleware(HandleSunsetRoutes::class);

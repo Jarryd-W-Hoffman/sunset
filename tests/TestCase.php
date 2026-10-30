@@ -4,9 +4,11 @@ namespace Jarryd\Sunset\Tests;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Jarryd\Sunset\SunsetServiceProvider;
 use Jarryd\Sunset\Support\SunsetReader;
 use Orchestra\Testbench\TestCase as Orchestra;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 abstract class TestCase extends Orchestra
 {
@@ -41,10 +43,29 @@ abstract class TestCase extends Orchestra
         $app['config']->set('app.key', 'base64:SX8xwpOBOv8BORUEBzL+PypoyKj6xcjOUKJvvpkvvI0=');
     }
 
+    /**
+     * Run a command with --json and decode its output. It's captured on its own
+     * buffer: a lazy database refresh inside the command would reset Artisan::output().
+     *
+     * @param  array<string, mixed>  $parameters
+     * @return array<int, array<string, mixed>>
+     */
+    protected function artisanJson(string $command, array $parameters = []): array
+    {
+        $output = new BufferedOutput;
+        Artisan::call($command, $parameters + ['--json' => true], $output);
+
+        return json_decode($output->fetch(), true);
+    }
+
     protected function getPackageProviders($app): array
     {
-        return [
+        // The integrations CI job installs Route Notes and Ghost Buster; every
+        // other job runs without them.
+        return array_filter([
             SunsetServiceProvider::class,
-        ];
+            'Jarryd\RouteNotes\RouteNotesServiceProvider',
+            'Jarryd\GhostBuster\GhostBusterServiceProvider',
+        ], fn (string $provider) => class_exists($provider));
     }
 }

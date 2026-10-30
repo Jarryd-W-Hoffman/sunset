@@ -126,3 +126,29 @@ jobs:
           DB_DATABASE: testing
           DB_USERNAME: ${{ matrix.db == 'mysql' && 'root' || 'postgres' }}
           DB_PASSWORD: secret
+
+  integrations:
+    name: With Route Notes and Ghost Buster (P8.4 - L13)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, fileinfo
+          coverage: none
+
+      # Installed for this job only: Sunset lists them under suggest, never require.
+      - name: Install dependencies with both sibling packages
+        run: |
+          composer config repositories.route-notes vcs https://github.com/Jarryd-W-Hoffman/route-notes
+          composer config repositories.ghost-buster vcs https://github.com/Jarryd-W-Hoffman/ghost-buster
+          composer require --dev "jarryd/route-notes:dev-main" "jarryd/ghost-buster:dev-main" --no-interaction --no-update
+          composer update --prefer-stable --prefer-dist --no-interaction
+
+      - name: Execute tests
+        run: vendor/bin/phpunit

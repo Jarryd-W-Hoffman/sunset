@@ -6,3 +6,9 @@ parameters:
 
     paths:
         - tests
+
+    ignoreErrors:
+        # ->note() is Route Notes' macro. Those tests only run when it's installed.
+        -
+            message: '#^Call to an undefined method Illuminate\\Routing\\Route::note\(\)\.$#'
+            path: tests/Integration/RouteNotesTest.php
