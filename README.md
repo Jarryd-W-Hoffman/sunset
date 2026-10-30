@@ -14,7 +14,7 @@
 </p>
 
 > [!NOTE]
-> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, and the deprecation headers. Enforcement, caller reports, page notices and the commands are next. Screenshots will be added as the commands land.
+> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, the deprecation headers, and retiring routes after the date (`warn` and `enforce`). Caller reports, page notices and the commands are next. Screenshots will be added as the commands land.
 
 <p align="center">
     <a href="#why-sunset">Why Sunset?</a> ·
@@ -115,7 +115,7 @@ flowchart TD
 
 ### 🚪 Retiring (after the date)
 
-- **`warn` mode (default):** keep serving the route, with the headers, and log each call. Nothing ever breaks on its own.
+- **`warn` mode (default):** keep serving the route, with the headers, and log a warning for each call. Nothing ever breaks on its own. A typo in the configured mode (say, `SUNSET_MODE=enforced`) also falls back to `warn`, and logs an error.
 - **Switch to `enforce` when you're ready**, for every route at once in `config/sunset.php` or with the `SUNSET_MODE` env variable:
 
   ```php
@@ -124,10 +124,23 @@ flowchart TD
 
   Or for a single route, with `->sunset('2027-03-01', mode: 'enforce')`. A route's own mode wins over the config.
 - **`enforce` mode:**
-  - `GET` and `HEAD` page requests with a replacement get a **`301` redirect** to it, so old bookmarks and search results keep working.
-  - Everything else gets **`410 Gone`**, with the reason and a link to the replacement, as JSON for API requests or a simple page for browsers.
-  - Non-`GET` requests are never redirected: replaying a `POST` against a different endpoint isn't safe.
-- **A grace period** (`grace_days`) lets you enforce a few days late without changing every date.
+  - **Page requests** (`GET` and `HEAD` that don't ask for JSON) with a replacement get a **`301` redirect** to it, so old bookmarks and search results keep working. The query string comes along, in its original order.
+  - **Everything else gets `410 Gone`**, and the controller never runs:
+    - API requests get JSON:
+
+      ```json
+      {
+          "message": "This endpoint was retired on 30 June 2027.",
+          "reason": "Use the v2 orders API",
+          "replacement": "https://acme.test/api/v2/orders",
+          "sunset": "2027-06-30"
+      }
+      ```
+
+    - Browsers get a simple page with the reason and a link to the replacement. Publish it with `php artisan vendor:publish --tag="sunset-views"` to restyle it.
+  - **Non-`GET` requests are never redirected:** replaying a `POST` against a different endpoint isn't safe. API calls aren't redirected either, because a different endpoint can return a different shape.
+  - **The deprecation headers are still sent** on redirects and `410`s.
+- **A grace period** (`grace_days`) lets you enforce a few days late without changing every date. During it, routes behave as in `warn` mode.
 
 ### 🔎 Seeing who's still calling
 
