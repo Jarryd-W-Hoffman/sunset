@@ -14,7 +14,7 @@
 </p>
 
 > [!NOTE]
-> **🚧 Design draft.** Nothing here is built yet: this README is the spec. Screenshots will replace the diagrams below once the commands exist.
+> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, with validation, and `route:cache` support. Headers, enforcement, caller reports and the commands are next. Screenshots will be added as the commands land.
 
 <p align="center">
     <a href="#why-sunset">Why Sunset?</a> ·
@@ -220,8 +220,12 @@ composer test         # run the test suite
 | --- | --- |
 | `composer test` | Run every test |
 | `vendor/bin/phpunit --filter=…` | Run some of the tests |
+| `composer lint` | Check code style (Pint) |
+| `composer format` | Fix code style |
+| `composer analyse` | Static analysis of `src` (PHPStan level 8, with Larastan) |
+| `composer analyse:tests` | Static analysis of the tests |
 
-CI runs the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. One more job installs both and runs the integration tests.
+CI runs the lint and static analysis, then the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. Once the integrations exist, one more job will install both and run their tests.
 
 ### Contributing
 
