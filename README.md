@@ -14,7 +14,7 @@
 </p>
 
 > [!NOTE]
-> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, the deprecation headers, retiring routes after the date (`warn` and `enforce`), recording callers, and the `sunset:list`, `sunset:report` and `sunset:check` commands. Page notices and the Route Notes and Ghost Buster integrations are next. Screenshots will be added as the commands land.
+> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, the deprecation headers, retiring routes after the date (`warn` and `enforce`), recording callers, the `sunset:list`, `sunset:report` and `sunset:check` commands, and page notices. The Route Notes and Ghost Buster integrations are next. Screenshots will be added as the commands land.
 
 <p align="center">
     <a href="#why-sunset">Why Sunset?</a> ·
@@ -110,7 +110,19 @@ flowchart TD
   - **`Link`** points to the replacement. A replacement route that needs parameters reuses the current route's, so `/articles/{post}` can point to `blog.show` and land on the same post. If the replacement can't be resolved (an unknown name, or a parameter that isn't available), the `Link` header is left out instead of breaking the response.
   - **Headers your app sets itself are kept:** Sunset never overwrites a `Sunset` or `Deprecation` header, and adds its `Link` alongside any others.
 
-- **Page notices** for people in a browser: drop `<x-sunset::notice />` into your layout and it shows on sunset pages only ("This page is being retired on 1 March 2027. Use Reports instead."). For Inertia or Livewire, read the same data from `Sunset::current()`.
+- **Page notices** for people in a browser: drop `<x-sunset::notice />` into your layout and it shows on sunset pages only, and renders nothing anywhere else:
+
+  > **This page is being retired on 1 March 2027.** The new reports are faster. [Use its replacement instead.](#)
+
+  It's an accessible `role="status"` banner that takes your own classes (`<x-sunset::notice class="mb-4" />`). To restyle it, publish the views with `php artisan vendor:publish --tag="sunset-views"`, or point `notice_view` at your own. Your view gets a `$notice` with `message`, `reason()`, `replacement` and `date()`.
+- **The same data for Inertia, Livewire or your own API:** `Sunset::current()` returns the notice for the current page, or `null`. It serialises to `{sunset, message, reason, replacement, past_sunset}`:
+
+  ```php
+  // Inertia: in HandleInertiaRequests::share()
+  'sunset' => fn () => Sunset::current(),
+  ```
+
+  With Livewire, read it in `mount()`. Livewire's later updates go to its own route, which has no sunset.
 - **An event**, `DeprecatedRouteCalled`, at most once per caller per day, for Slack alerts or anything else.
 
 ### 🚪 Retiring (after the date)
