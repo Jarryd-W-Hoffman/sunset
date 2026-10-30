@@ -28,7 +28,13 @@ class SunsetServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/sunset.php' => config_path('sunset.php'),
             ], 'sunset-config');
+
+            $this->publishes([
+                __DIR__.'/../resources/views' => resource_path('views/vendor/sunset'),
+            ], 'sunset-views');
         }
+
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'sunset');
 
         $this->registerMiddleware();
 

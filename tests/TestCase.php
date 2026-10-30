@@ -2,6 +2,7 @@
 
 namespace Jarryd\Sunset\Tests;
 
+use Carbon\CarbonImmutable;
 use Jarryd\Sunset\SunsetServiceProvider;
 use Jarryd\Sunset\Support\SunsetReader;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -13,6 +14,10 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         SunsetReader::flushCache();
+
+        // The stubs' sunset dates are in 2027, so freeze time well before them;
+        // otherwise the suite would change behaviour once those dates pass.
+        $this->travelTo(CarbonImmutable::parse('2026-10-30 09:00:00'));
     }
 
     protected function defineEnvironment($app): void
