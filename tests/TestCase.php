@@ -3,12 +3,15 @@
 namespace Jarryd\Sunset\Tests;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Jarryd\Sunset\SunsetServiceProvider;
 use Jarryd\Sunset\Support\SunsetReader;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
+    use LazilyRefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -25,6 +28,12 @@ abstract class TestCase extends Orchestra
         // Laravel 12 serves the local disk through routes, which would otherwise
         // appear alongside the routes under test.
         $app['config']->set('filesystems.disks.local.serve', false);
+
+        // Set DB_CONNECTION=mysql|pgsql (plus DB_HOST, DB_DATABASE, ...) to run
+        // the suite against a real server; Testbench defaults to in-memory SQLite.
+        if (in_array(env('DB_CONNECTION'), ['mysql', 'mariadb', 'pgsql'], true)) {
+            $app['config']->set('database.default', env('DB_CONNECTION'));
+        }
 
         // The web group encrypts cookies, which needs a key.
         $app['config']->set('app.key', 'base64:SX8xwpOBOv8BORUEBzL+PypoyKj6xcjOUKJvvpkvvI0=');

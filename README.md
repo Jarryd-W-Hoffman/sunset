@@ -14,7 +14,7 @@
 </p>
 
 > [!NOTE]
-> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, the deprecation headers, and retiring routes after the date (`warn` and `enforce`). Caller reports, page notices and the commands are next. Screenshots will be added as the commands land.
+> **🚧 In progress.** This README is the spec. Built so far: scheduling a sunset with `->sunset()` or `#[Sunset]`, the deprecation headers, retiring routes after the date (`warn` and `enforce`), recording callers, and the `sunset:list`, `sunset:report` and `sunset:check` commands. Page notices and the Route Notes and Ghost Buster integrations are next. Screenshots will be added as the commands land.
 
 <p align="center">
     <a href="#why-sunset">Why Sunset?</a> ·
@@ -144,9 +144,16 @@ flowchart TD
 
 ### 🔎 Seeing who's still calling
 
-- **Every call is recorded** against the route, before and after the date, including blocked ones.
-- **Callers are identified** by the signed-in user (`user:42`), else the Sanctum token's name (`token:mobile-app`), else the client's user agent family (`agent:okhttp`). Swap in your own with `Sunset::identifyCallersUsing(fn (Request $request) => ...)`.
-- **No IP addresses by default.** They're personal data in most places; opt in if you need them.
+- **Every call is recorded** against the route, before and after the date, including blocked ones. It's written after the response has been sent, so callers never wait on it.
+- **Callers are identified** in this order:
+  1. **The API token's name** (`token:mobile-app`), from Sanctum or anything with a `currentAccessToken()`. It names the integration you need to contact. Cookie-based SPA requests have no token name, so they fall through to the user.
+  2. **The signed-in user** (`user:42`).
+  3. **The client's user agent family:** `agent:okhttp`, `agent:python-requests`, `agent:browser` or `agent:bot`.
+  4. Otherwise, `anonymous`.
+
+  To identify callers your own way, for example by tenant, use `Sunset::identifyCallersUsing(fn (Request $request) => 'tenant:'.$request->header('X-Tenant'))`.
+- **No IP addresses by default.** They're personal data in most places; opt in with `record_ip` if you need them.
+- **An event for alerts:** `DeprecatedRouteCalled` fires at most once per caller, route and method each day, with the route, method, caller, its `Sunset` and whether the call came after the sunset date. Send it to Slack, email, or wherever you like.
 
 ## Installation
 
@@ -174,11 +181,11 @@ php artisan vendor:publish --tag="sunset-config"
 
 | Command | What it does |
 | --- | --- |
-| `php artisan sunset:list` | Every sunset route: its date, days left, stage, replacement and how many callers it still has |
+| `php artisan sunset:list` | Every sunset route, soonest first: its date, how far off it is, its stage (**Deprecated**, **Retired** or **Safe to delete**), mode, replacement, and how many different callers it had in the last `quiet_days` |
 | `php artisan sunset:report` | Who's still calling each sunset route, busiest first, with hits and when they last called |
 | `php artisan sunset:report reports.legacy` | The callers of one route |
 | `php artisan sunset:report --since=7` | Only callers seen in the last 7 days |
-| `php artisan sunset:check` | For CI: fails on a replacement that doesn't exist, or on a route past its date that's been quiet long enough to delete |
+| `php artisan sunset:check` | For CI: fails on a replacement that isn't a route name, URL or path, or on a route that's **Safe to delete**: retired for at least `quiet_days`, with no calls in that time |
 | `--json` | On `sunset:list` and `sunset:report`, for scripts and dashboards |
 
 ## Configuration
@@ -204,8 +211,11 @@ One table, `sunset_calls`, with one row per route, method and caller:
 | `route` | `api.v1.orders.store` | The route name, or its URI if it has no name |
 | `method` | `POST` | |
 | `caller` | `token:mobile-app` | See [Seeing who's still calling](#-seeing-whos-still-calling) |
+| `ip` | `203.0.113.9` | The most recent caller IP, only with `record_ip` |
 | `hits` | `1,204` | Calls recorded, blocked ones included |
 | `first_called_at` / `last_called_at` | `2026-11-02 09:14:00` | |
+
+The migration runs automatically with `php artisan migrate`. To customise it, publish it with `php artisan vendor:publish --tag="sunset-migrations"`.
 
 The sunset dates themselves live in your route definitions, not the database, so they're reviewed in pull requests like any other change.
 
@@ -243,7 +253,7 @@ composer test         # run the test suite
 | `composer analyse` | Static analysis of `src` (PHPStan level 8, with Larastan) |
 | `composer analyse:tests` | Static analysis of the tests |
 
-CI runs the lint and static analysis, then the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. Once the integrations exist, one more job will install both and run their tests.
+CI runs the lint and static analysis, then the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, plus MySQL 8.4 and Postgres 17, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. Once the integrations exist, one more job will install both and run their tests.
 
 ### Contributing
 
