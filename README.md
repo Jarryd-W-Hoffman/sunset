@@ -13,8 +13,9 @@
     <img src="https://img.shields.io/badge/license-MIT-22c55e" alt="MIT license">
 </p>
 
-> [!NOTE]
-> **🚧 Not yet tagged.** Everything in this README is built and tested. Screenshots and a first release are next.
+<p align="center">
+    <img src=".github/screenshots/sunset-list.png" alt="php artisan sunset:list showing six sunset routes, soonest first: a promo page that's safe to delete, a retired API route in enforce mode, and four deprecated routes with their dates, replacements and how many callers each still has." width="900">
+</p>
 
 <p align="center">
     <a href="#why-sunset">Why Sunset?</a> ·
@@ -25,6 +26,7 @@
     <a href="#configuration">Configuration</a> ·
     <a href="#what-gets-stored">What gets stored</a> ·
     <a href="#works-with-route-notes-and-ghost-buster">Route Notes and Ghost Buster</a> ·
+    <a href="#how-its-built">How it's built</a> ·
     <a href="#development">Development</a> ·
     <a href="#license">License</a>
 </p>
@@ -100,8 +102,8 @@ flowchart TD
 - **Standard headers** on every response, so well-behaved API clients and tools pick it up:
 
   ```http
-  Deprecation: @1793491200
-  Sunset: Wed, 30 Jun 2027 00:00:00 GMT
+  Sunset: Mon, 01 Mar 2027 00:00:00 GMT
+  Deprecation: @1788220800
   Link: <https://acme.test/api/v2/orders>; rel="successor-version"
   ```
 
@@ -112,7 +114,9 @@ flowchart TD
 
 - **Page notices** for people in a browser: drop `<x-sunset::notice />` into your layout and it shows on sunset pages only, and renders nothing anywhere else:
 
-  > **This page is being retired on 1 March 2027.** The new reports are faster. [Use its replacement instead.](#)
+  <p align="center">
+      <img src=".github/screenshots/page-notice.png" alt="A profile page in the Acme Shop demo app, with an amber banner above the form: This page is being retired on 1 December 2026. Your profile now lives in Settings. Use its replacement instead." width="800">
+  </p>
 
   It's an accessible `role="status"` banner that takes your own classes (`<x-sunset::notice class="mb-4" />`). To restyle it, publish the views with `php artisan vendor:publish --tag="sunset-views"`, or point `notice_view` at your own. Your view gets a `$notice` with `message`, `reason()`, `replacement` and `date()`.
 - **The same data for Inertia, Livewire or your own API:** `Sunset::current()` returns the notice for the current page, or `null`. It serialises to `{sunset, message, reason, replacement, past_sunset}`:
@@ -154,6 +158,11 @@ flowchart TD
   - **The deprecation headers are still sent** on redirects and `410`s.
 - **A grace period** (`grace_days`) lets you enforce a few days late without changing every date. During it, routes behave as in `warn` mode.
 
+<p align="center">
+    <img src=".github/screenshots/deprecation-headers.png" alt="curl -i against a deprecated orders endpoint: a 200 OK response carrying the Sunset, Deprecation and Link successor-version headers." width="49%">
+    <img src=".github/screenshots/gone.png" alt="After its sunset date, an enforced API route returns 410, with JSON giving the message, reason, replacement URL and sunset date." width="49%">
+</p>
+
 ### 🔎 Seeing who's still calling
 
 - **Every call is recorded** against the route, before and after the date, including blocked ones. It's written after the response has been sent, so callers never wait on it.
@@ -166,6 +175,17 @@ flowchart TD
   To identify callers your own way, for example by tenant, use `Sunset::identifyCallersUsing(fn (Request $request) => 'tenant:'.$request->header('X-Tenant'))`.
 - **No IP addresses by default.** They're personal data in most places; opt in with `record_ip` if you need them.
 - **An event for alerts:** `DeprecatedRouteCalled` fires at most once per caller, route and method each day, with the route, method, caller, its `Sunset` and whether the call came after the sunset date. Send it to Slack, email, or wherever you like.
+
+<p align="center">
+    <img src=".github/screenshots/sunset-report.png" alt="php artisan sunset:report listing eleven callers busiest first: the mobile-app and acme-pos API tokens, a Zapier integration, Python scripts, browsers, a bot and individual users, with hits and when each last and first called." width="900">
+</p>
+
+- **Narrow it down** to one route, or to callers seen recently. When everyone's moved over, `sunset:check` in CI tells you what's safe to delete, and catches replacements that don't exist:
+
+<p align="center">
+    <img src=".github/screenshots/sunset-report-since.png" alt="sunset:report api.v1.orders.index --since=7, showing the four callers of the v1 orders endpoint in the last week." width="49%">
+    <img src=".github/screenshots/sunset-check.png" alt="sunset:check finding two problems, a promo route that's safe to delete and a replacement route name that doesn't exist, and exiting with code 1." width="49%">
+</p>
 
 ## Installation
 
@@ -249,7 +269,41 @@ flowchart LR
 | [Route Notes](https://github.com/Jarryd-W-Hoffman/route-notes) | `->sunset()` also adds a `deprecated` note, so `route:list` shows "Sunset on 1 Mar 2027, use reports.index" beneath the route. Calling `->sunset()` again replaces it. `sunset:list --candidates` lists routes with a `deprecated` note (fluent, `#[Note]` or `@note [deprecated]`) but no sunset date yet: the routes you've meant to retire but haven't scheduled. |
 | [Ghost Buster](https://github.com/Jarryd-W-Hoffman/ghost-buster) | `sunset:list` adds **Last used** and **Hits** columns, and `--json` a `ghost_buster` key, from Ghost Buster's `route_usage` table as of its last sync. These cover the route's life *before* it was given a sunset date. |
 
+<p align="center">
+    <img src=".github/screenshots/route-notes.png" alt="With Route Notes installed, route:list shows a deprecated note under each sunset route, such as Sunset on 1 Mar 2027, use api.v2.orders.index, and sunset:list --candidates lists two routes marked deprecated that have no sunset date yet." width="900">
+</p>
+
+<p align="center">
+    <img src=".github/screenshots/ghost-buster.png" alt="With Ghost Buster installed, sunset:list gains Last used and Hits columns, showing for example 48,213 hits on the v1 orders endpoint before it was given a sunset date." width="900">
+</p>
+
 The links only go one way. Sunset writes its note in Route Notes' stored format and reads Ghost Buster's table. Neither package calls Sunset or needs to know it exists. The note is only added by `->sunset()`. With `#[Sunset]` on a controller, add a `#[Note]` beside it yourself.
+
+## How it's built
+
+The middleware does the work in two halves: everything the caller sees happens before the response is sent, and everything Sunset keeps for itself happens after.
+
+```mermaid
+flowchart LR
+    Route["Route action<br/>or #[Sunset]"] --> Reader["SunsetReader"]
+    Reader --> Handle["handle()<br/>headers, 301 or 410"]
+    Handle --> Response["Response sent"]
+    Response --> Terminate["terminate()"]
+    Terminate --> Calls[("sunset_calls")]
+    Terminate --> Event["DeprecatedRouteCalled<br/>once a day per caller"]
+    Calls --> Commands["sunset:list<br/>sunset:report<br/>sunset:check"]
+    Reader --> Commands
+```
+
+| Part | What it does |
+| --- | --- |
+| `Sunset` | The attribute and value object. Dates are strict `Y-m-d`, at midnight in your app's timezone, and stored in the route action as plain data so `route:cache` keeps them |
+| `SunsetReader` | Finds a route's sunset: the `->sunset()` macro first, then an attribute on the method, then on the controller class |
+| `HandleSunsetRoutes` | A terminable middleware. `handle()` sends the headers and enforces; `terminate()` records the call and fires the event, after the response has gone |
+| `CallerIdentifier` | Names the caller: API token, then user, then user agent family, unless you've set your own rule |
+| `CallRecorder` | One upsert per call that adds to `hits` and keeps `first_called_at`, on SQLite, MySQL and Postgres |
+| `Stage` and `EffectiveMode` | The rules for **Deprecated**, **Retired** and **Safe to delete**, and for which mode applies, shared by the middleware and every command |
+| `Integrations\RouteNotes` and `Integrations\GhostBuster` | The optional extras, detected by class name, so neither package is ever required |
 
 ## Development
 
@@ -266,7 +320,7 @@ composer test         # run the test suite
 | `composer analyse` | Static analysis of `src` (PHPStan level 8, with Larastan) |
 | `composer analyse:tests` | Static analysis of the tests |
 
-CI runs the lint and static analysis, then the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, plus MySQL 8.4 and Postgres 17, and once more with Route Notes and Ghost Buster installed, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. Once the integrations exist, one more job will install both and run their tests.
+CI runs the lint and static analysis, then the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, plus MySQL 8.4 and Postgres 17. Those jobs check that Route Notes and Ghost Buster are **not** installed, so Sunset is always tested on its own. One more job installs both and runs the integration tests in `tests/Integration`, which skip themselves everywhere else.
 
 ### Contributing
 
