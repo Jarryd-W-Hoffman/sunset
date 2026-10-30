@@ -54,6 +54,18 @@ class NoticeTest extends TestCase
     }
 
     #[Test]
+    public function your_own_styles_are_added_to_the_defaults()
+    {
+        Route::get('/styled', fn () => Blade::render('<x-sunset::notice style="margin-bottom: 20px" />'))->sunset('2027-03-01');
+
+        $content = $this->get('/styled')->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($content, 'style='));
+        $this->assertStringContainsString('border-left: 4px solid #d29922;', $content);
+        $this->assertStringContainsString('margin-bottom: 20px', $content);
+    }
+
+    #[Test]
     public function the_notice_view_can_be_swapped()
     {
         View::addNamespace('app', __DIR__.'/../Stubs/views');
