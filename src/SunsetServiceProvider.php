@@ -7,6 +7,9 @@ use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use Jarryd\Sunset\Commands\CheckCommand;
+use Jarryd\Sunset\Commands\ListCommand;
+use Jarryd\Sunset\Commands\ReportCommand;
 use Jarryd\Sunset\Http\Middleware\HandleSunsetRoutes;
 
 class SunsetServiceProvider extends ServiceProvider
@@ -25,6 +28,16 @@ class SunsetServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
+            $this->commands([
+                CheckCommand::class,
+                ListCommand::class,
+                ReportCommand::class,
+            ]);
+
+            $this->publishesMigrations([
+                __DIR__.'/../database/migrations' => database_path('migrations'),
+            ], 'sunset-migrations');
+
             $this->publishes([
                 __DIR__.'/../config/sunset.php' => config_path('sunset.php'),
             ], 'sunset-config');
@@ -35,6 +48,7 @@ class SunsetServiceProvider extends ServiceProvider
         }
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sunset');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->registerMiddleware();
 

@@ -7,12 +7,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
-use Jarryd\Sunset\Mode;
+use Jarryd\Sunset\Events\DeprecatedRouteCalled;
 use Jarryd\Sunset\Sunset;
+use Jarryd\Sunset\Support\CallerIdentifier;
+use Jarryd\Sunset\Support\CallRecorder;
+use Jarryd\Sunset\Support\EffectiveMode;
 use Jarryd\Sunset\Support\ReplacementUrl;
 use Jarryd\Sunset\Support\SunsetReader;
+use Jarryd\Sunset\Support\SunsetRoutes;
 use Symfony\Component\HttpFoundation\Response;
 
 class HandleSunsetRoutes
@@ -35,7 +39,7 @@ class HandleSunsetRoutes
 
         $replacement = $this->replacements->for($sunset, $request);
 
-        if ($this->isEnforced($sunset)) {
+        if (EffectiveMode::isEnforced($sunset)) {
             $response = $this->retire($sunset, $request, $replacement);
         } else {
             if (now()->gte($sunset->date())) {
@@ -53,33 +57,31 @@ class HandleSunsetRoutes
     }
 
     /**
-     * Whether the route should be switched off now: in enforce mode, and past
-     * its sunset date plus the grace period.
+     * Record the call once the response has been sent, so callers never wait on it.
      */
-    protected function isEnforced(Sunset $sunset): bool
+    public function terminate(Request $request, Response $response): void
     {
-        return $this->mode($sunset) === Mode::Enforce
-            && now()->gte($sunset->date()->addDays((int) config('sunset.grace_days', 0)));
-    }
+        $route = $request->route();
+        $sunset = $route instanceof Route ? SunsetReader::forRoute($route) : null;
 
-    /**
-     * The route's own mode, else the configured one. A configured typo falls
-     * back to warn, so a bad env value can't switch every sunset route off.
-     */
-    protected function mode(Sunset $sunset): Mode
-    {
-        if ($sunset->mode !== null) {
-            return $sunset->mode;
+        if ($sunset === null) {
+            return;
         }
 
-        $configured = config('sunset.mode', 'warn');
+        $key = SunsetRoutes::key($route);
+        $method = $request->method();
+        $caller = CallerIdentifier::identify($request);
+        $now = now();
 
-        try {
-            return Mode::fromName(is_string($configured) ? $configured : '');
-        } catch (InvalidArgumentException $exception) {
-            Log::error($exception->getMessage().' Falling back to warn.');
+        if (config('sunset.record_calls', true)) {
+            CallRecorder::record($key, $method, $caller, config('sunset.record_ip', false) ? $request->ip() : null, $now);
+        }
 
-            return Mode::Warn;
+        // At most once per caller, route and method each day.
+        $eventKey = 'sunset:called:'.sha1("{$key}|{$method}|{$caller}|{$now->toDateString()}");
+
+        if (Cache::add($eventKey, true, $now->copy()->endOfDay())) {
+            DeprecatedRouteCalled::dispatch($key, $method, $caller, $sunset, $now->gte($sunset->date()));
         }
     }
 

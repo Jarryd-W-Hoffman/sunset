@@ -5,7 +5,10 @@ namespace Jarryd\Sunset;
 use Attribute;
 use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
+use Closure;
+use Illuminate\Http\Request;
 use InvalidArgumentException;
+use Jarryd\Sunset\Support\CallerIdentifier;
 
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD)]
 final class Sunset
@@ -33,6 +36,17 @@ final class Sunset
         }
 
         $this->mode = $mode === null ? null : Mode::fromName($mode);
+    }
+
+    /**
+     * Identify callers your own way in sunset:report, for example by tenant.
+     * Return null to fall back to "anonymous".
+     *
+     * @param  (Closure(Request): (string|null))|null  $callback  Null restores the default.
+     */
+    public static function identifyCallersUsing(?Closure $callback): void
+    {
+        CallerIdentifier::using($callback);
     }
 
     /**
