@@ -1,0 +1,60 @@
+{
+    "name": "jarryd/sunset",
+    "description": "Retire old routes in your Laravel app without breaking the people still using them.",
+    "type": "library",
+    "keywords": [
+        "laravel",
+        "routes",
+        "deprecation",
+        "sunset",
+        "api",
+        "legacy"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jarryd Hoffman",
+            "email": "jarryd.hoffman@windowslive.com"
+        }
+    ],
+    "scripts": {
+        "lint": "./vendor/bin/pint --test",
+        "format": "./vendor/bin/pint",
+        "analyse": "./vendor/bin/phpstan analyse --memory-limit=1G",
+        "analyse:tests": "phpstan analyse -c phpstan.tests.neon --memory-limit=1G",
+        "test": "./vendor/bin/phpunit"
+    },
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0|^11.0",
+        "laravel/pint": "^1.27",
+        "phpstan/phpstan": "^2.1",
+        "nunomaduro/larastan": "^3.9"
+    },
+    "suggest": {
+        "jarryd/route-notes": "Shows each route's sunset date beneath it in route:list.",
+        "jarryd/ghost-buster": "Adds each route's usage from before its sunset date to sunset:list."
+    },
+    "autoload": {
+        "psr-4": {
+            "Jarryd\\Sunset\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Jarryd\\Sunset\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Jarryd\\Sunset\\SunsetServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
