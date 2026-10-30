@@ -40,13 +40,13 @@
 
 ## How it works
 
-A route moves through four stages. Sunset handles the middle two; [Ghost Buster](https://github.com/Jarryd-W-Hoffman/ghost-buster) tells you when it's safe to finish the job.
+A route moves through four stages. Sunset handles all of them on its own: it records every call to a sunset route, so it knows when a retired route has gone quiet and is safe to delete.
 
 ```mermaid
 flowchart LR
     Active["Active"] -->|"->sunset('2027-03-01')"| Deprecated["⚠️ Deprecated<br/>works as normal, with<br/>headers and notices"]
     Deprecated -->|"the sunset date passes"| Retired["🌅 Retired<br/>redirected, 410 Gone,<br/>or still served in warn mode"]
-    Retired -->|"no calls for 30 days"| Delete["🗑️ Safe to delete<br/>sunset:list says so"]
+    Retired -->|"no calls for<br/>quiet_days (30)"| Delete["🗑️ Safe to delete<br/>sunset:list says so"]
 ```
 
 On every request to a sunset route:
@@ -186,18 +186,22 @@ The sunset dates themselves live in your route definitions, not the database, so
 
 ## Works with Route Notes and Ghost Buster
 
-Sunset is the middle step of a route's retirement, between two sibling packages:
+**Sunset is fully standalone.** It doesn't require either package. Everything above, including "safe to delete", comes from Sunset's own `sunset_calls` table. Route Notes and Ghost Buster are listed under `suggest` in `composer.json`, not `require`. When Sunset finds one of them installed, it adds a few extras, and nothing changes when they're absent.
+
+The three packages each cover one step of a route's retirement:
 
 ```mermaid
 flowchart LR
-    Notes["📝 Route Notes<br/>why it exists, and that<br/>it's deprecated"] --> Sunset["🌅 Sunset<br/>warn callers, then<br/>retire it on a date"]
-    Sunset --> Ghost["👻 Ghost Buster<br/>prove nobody uses it,<br/>then delete it"]
+    Notes["📝 Route Notes<br/>why it exists, and that<br/>it's deprecated"] -.->|optional| Sunset["🌅 Sunset<br/>warn callers, then<br/>retire it on a date"]
+    Sunset -.->|optional| Ghost["👻 Ghost Buster<br/>a second opinion on<br/>whether it's still used"]
 ```
 
-- **[Route Notes](https://github.com/Jarryd-W-Hoffman/route-notes):** `->sunset()` adds a `deprecated` note, so `route:list` shows "Sunset on 1 Mar 2027, use reports.index" beneath the route. `sunset:list --candidates` lists routes with a `deprecated` note but no sunset date yet.
-- **[Ghost Buster](https://github.com/Jarryd-W-Hoffman/ghost-buster):** `sunset:list` shows Ghost Buster's last-used time and hit count beside each route, and `ghost:bust` marks sunset routes so they aren't mistaken for forgotten ones.
+| If installed | Sunset adds |
+| --- | --- |
+| [Route Notes](https://github.com/Jarryd-W-Hoffman/route-notes) | `->sunset()` also adds a `deprecated` note, so `route:list` shows "Sunset on 1 Mar 2027, use reports.index" beneath the route. `sunset:list --candidates` lists routes with a `deprecated` note but no sunset date yet. |
+| [Ghost Buster](https://github.com/Jarryd-W-Hoffman/ghost-buster) | `sunset:list` shows Ghost Buster's last-used time and hit count beside each route. These cover the route's life *before* it was given a sunset date. |
 
-Neither is required: Sunset works on its own, and lights up these extras when it finds them installed.
+These are one-way and read-only: Sunset reads from the other packages when it finds them, and never the other way round. Neither of them needs to know Sunset exists.
 
 ## Development
 
@@ -210,7 +214,7 @@ composer test         # run the test suite
 | `composer test` | Run every test |
 | `vendor/bin/phpunit --filter=…` | Run some of the tests |
 
-CI runs the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13.
+CI runs the suite on PHP 8.3, 8.4 and 8.5 against Laravel 12 and 13, without Route Notes or Ghost Buster installed, so Sunset is always tested on its own. One more job installs both and runs the integration tests.
 
 ### Contributing
 
