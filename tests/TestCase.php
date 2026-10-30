@@ -31,8 +31,10 @@ abstract class TestCase extends Orchestra
 
         // Set DB_CONNECTION=mysql|pgsql (plus DB_HOST, DB_DATABASE, ...) to run
         // the suite against a real server; Testbench defaults to in-memory SQLite.
-        if (in_array(env('DB_CONNECTION'), ['mysql', 'mariadb', 'pgsql'], true)) {
-            $app['config']->set('database.default', env('DB_CONNECTION'));
+        $connection = getenv('DB_CONNECTION');
+
+        if (in_array($connection, ['mysql', 'mariadb', 'pgsql'], true)) {
+            $app['config']->set('database.default', $connection);
         }
 
         // The web group encrypts cookies, which needs a key.

@@ -27,8 +27,8 @@ class CallRecorder
         ], ['route', 'method', 'caller'], [
             'ip',
             'last_called_at',
-            // The only variable part is the column name, quoted by the grammar: never user input.
-            // @phpstan-ignore argument.type
+            // The only variable part is the column name, quoted by the grammar: never user
+            // input. phpstan.neon allows this one raw() call for that reason.
             'hits' => DB::raw("{$existingHits} + 1"),
         ]);
     }

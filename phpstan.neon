@@ -5,3 +5,12 @@ parameters:
     level: 8
     paths:
         - src
+
+    ignoreErrors:
+        # CallRecorder's upsert adds to the existing hit count with a raw expression.
+        # Its only variable part is the column name, quoted by the query grammar.
+        -
+            message: '#^Parameter \#1 \$value of static method Illuminate\\Database\\Connection::raw\(\) expects float\|int\|literal-string, non-falsy-string given\.$#'
+            path: src/Support/CallRecorder.php
+            count: 1
+            reportUnmatched: false
